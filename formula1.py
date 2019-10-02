@@ -1,6 +1,6 @@
 from formulacli import FormulaCLI
 
-cli = FormulaCLI()
+CLI = FormulaCLI()
 
 if __name__ == "__main__":
-    cli.run()
+    CLI.run()
