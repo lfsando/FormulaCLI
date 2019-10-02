@@ -1,0 +1,9 @@
+__pycache__/
+bak
+.vscode/
+*.ipynb
+debug.log
+test.py
+.mypy_cache
+.pynb_checkpoints
+.idea
