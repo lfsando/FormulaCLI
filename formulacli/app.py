@@ -4,9 +4,9 @@ from typing import Dict, Any
 import colorama
 from requests.exceptions import ConnectionError
 
-from . import contexts
-from .exceptions import ExitException
-from .helpers import clear_screen
+from formulacli import contexts
+from formulacli.exceptions import ExitException
+from formulacli.helpers import clear_screen
 
 
 class FormulaCLI:
@@ -50,4 +50,3 @@ class FormulaCLI:
     def close(msg: str = "Graciously exiting.") -> None:
         print(msg)
         sys.exit()
-

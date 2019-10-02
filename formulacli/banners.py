@@ -1,5 +1,5 @@
 import random
-from typing import List, Optional, Union
+from typing import List, Optional
 
 from colorama import Fore, Back, Style
 
@@ -29,7 +29,7 @@ banners = ["""
 """
            ]
 
-description = "\t\b\b\bFormula 1 CLI.\n\n"
+DESCRIPTION = "\t\b\b\bFormula 1 CLI.\n\n"
 
 
 class Banner:
@@ -37,10 +37,6 @@ class Banner:
     banner: str
 
     def __init__(self, themes: Optional[List[int]] = None) -> None:
-        """
-
-        :type themes: Optional[List[str]]
-        """
         if themes:
             self.themes = themes
         else:

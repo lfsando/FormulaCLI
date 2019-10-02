@@ -4,7 +4,7 @@ from typing import Optional, List
 import pandas as pd
 from bs4 import BeautifulSoup
 
-from .html_handlers import get_response, parse
+from formulacli.html_handlers import get_response, parse
 
 
 def get_result_table(soup: BeautifulSoup) -> Optional[BeautifulSoup]:

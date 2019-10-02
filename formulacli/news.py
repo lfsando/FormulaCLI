@@ -4,8 +4,8 @@ from typing import Dict, Pattern, Union, List
 from bs4 import BeautifulSoup
 from pandas import DataFrame
 
-from .html_handlers import get_response, parse
-from .urls import LATEST_NEWS_URL, BASE_URL
+from formulacli.html_handlers import get_response, parse
+from formulacli.urls import BASE_URL, LATEST_NEWS_URL
 
 
 def parse_top_stories(soup: BeautifulSoup, img_size: int = 3) -> List[Dict[str, Union[str, List[str]]]]:

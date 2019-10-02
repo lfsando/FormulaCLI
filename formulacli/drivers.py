@@ -3,8 +3,8 @@ from typing import Dict, Any, Tuple, Iterator, List
 from bs4 import BeautifulSoup
 from pandas import DataFrame
 
-from .urls import BASE_URL, DRIVERS_URL
-from .html_handlers import get_response, parse
+from formulacli.html_handlers import get_response, parse
+from formulacli.urls import BASE_URL, DRIVERS_URL
 
 
 def parse_drivers(soup: BeautifulSoup) -> DataFrame:
