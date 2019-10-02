@@ -37,53 +37,53 @@ class Context:
     block_render: bool = True
 
     def __init__(self) -> None:
-        self.name: str = "context"
-        self.state: Dict[str, Any] = {}
-        self.custom_commands: List[Command] = []
-        self.command: str = ''
-        self.menu_options: List[Option] = []
-        self.next_ctx_args: Dict[str, Any] = {}
-        self.next_ctx: ContextType = self
-        self.show_banner: bool = False
-        self.string_input: bool = False
-        self.show_tip: bool = False
+        self.state: Dict[str, Any] = {
+            'name': "context",
+            'next_ctx': self,
+            'next_ctx_args': {},
+            'command': '',
+            'custom_commands': [],
+            'menu_options': [],
+            'show_banner': False,
+            'string_input': False
+        }
 
     def __str__(self):
-        return self.name
+        return self.state['name']
 
     def render(self) -> None:
         print(self)
-        if self.show_banner:
+        if self.state['show_banner']:
             print(self.banner)
         self.show_options()
         self.event()
         print()
         self.show_messages()
+        print("Press h for help.")
 
-        # TODO: Move below to action_handler
-        if self.show_tip:
-            print("Press h for help.")
-        self.command = self.get_commands()
+        self.state['command'] = cmd = self.get_commands()
 
-        if self.command.lower() in ['q', 'quit', 'exit']:
+        if cmd.lower() in ['q', 'quit', 'exit']:
             raise ExitException
-        elif self.command.lower() in ['m', 'menu']:
-            self.next_ctx = MainContext
-            self.next_ctx_args = {}
+        elif cmd.lower() in ['m', 'menu']:
+            self.state['next_ctx'] = MainContext
+            self.state['next_ctx_args'] = {}
             return
-        elif self.command.lower() in ['b', 'back']:
+        elif cmd.lower() in ['b', 'back']:
             try:
                 Context.history.pop()
-                self.next_ctx = Context.history[-1]
-                self.next_ctx_args = {}
+                self.state['next_ctx'] = Context.history[-1]
+                self.state['next_ctx_args'] = {}
             except IndexError:
-                self.next_ctx = MainContext
-                self.next_ctx_args = {}
+                self.state['next_ctx'] = MainContext
+                self.state['next_ctx_args'] = {}
             return
-        elif self.command.lower() in ['?', 'h', 'help']:
+        elif cmd.lower() in ['?', 'h', 'help']:
             self.show_help()
-        elif self.command.lower() == '\'':
-            self.string_input = True
+            self.state['next_ctx'] = Context.history[-1]
+            return
+        elif cmd.lower() == '\'':
+            self.state['string_input'] = True
 
         self.action_handler()
 
@@ -97,9 +97,9 @@ class Context:
         Context.history.append(self)
 
     def show_options(self) -> None:
-        template = "[{}]  {}"
-        for option in self.menu_options:
-            self._pprint(template.format(option.opt, option.label), margin=2)
+        template = "[{opt}]  {label}"
+        for option in self.state['menu_options']:
+            self._pprint(template.format(opt=option.opt, label=option.label), margin=2)
         print()
 
     def show_messages(self) -> None:
@@ -117,7 +117,7 @@ class Context:
     def show_help(self) -> None:
         commands: List[Command] = []
         commands += [Command(cmd='\'', label="Write command")]
-        commands += self.custom_commands
+        commands += self.state['custom_commands']
 
         if len(Context.history) > 1:
             commands.append(Command(cmd='b', label="Back"))
@@ -155,13 +155,12 @@ class Context:
     def get_commands(self) -> str:
         cmd: str = ''
         try:
-            if self.string_input:
+            if self.state['string_input']:
                 cmd = str(input(">> ")).strip()
-                self.string_input = False
+                self.state['string_input'] = False
             else:
                 try:
                     cmd = read_key()
-
                     if isinstance(cmd, bytes):
                         cmd = cmd.decode()
                 except UnicodeDecodeError:
@@ -184,36 +183,41 @@ class MainContext(Context):
 
     def __init__(self) -> None:
         super().__init__()
-        self.name = "Main Menu"
-        self.menu_options = [
-            Option(opt=1, label="Driver Standing"),
-            Option(opt=2, label="Constructor Standing"),
-            Option(opt=3, label="Races Results"),
-            Option(opt=4, label="Fastest Laps"),
-            Option(opt=5, label="Drivers"),
-            Option(opt=6, label="Latest News"),
-        ]
-        self.custom_commands = [Command(cmd='NUMBER', label="Select Option"), ]
-        self.state = {'tables': ['drivers', 'team', 'races', 'fastest-laps']}
-        self.show_banner = True
-        self.show_tip = True
-        self.next_ctx = self
+        self.state.update({
+            'name': "Main Menu",
+            'next_ctx': self,
+            'custom_commands': [
+                Command(cmd='NUMBER', label="Select Option"),
+            ],
+            'menu_options': [
+                Option(opt=1, label="Driver Standing"),
+                Option(opt=2, label="Constructor Standing"),
+                Option(opt=3, label="Races Results"),
+                Option(opt=4, label="Fastest Laps"),
+                Option(opt=5, label="Drivers"),
+                Option(opt=6, label="Latest News"),
+            ],
+            'show_banner': True,
+            'tables': [
+                'drivers', 'team', 'races', 'fastest-laps'
+            ],
+        })
 
     def action_handler(self) -> None:
         try:
-            cmd: int = int(self.command)
+            cmd: int = int(self.state['command'])
         except ValueError:
             Context.messages.append(Message(msg="Invalid Command", type='error'))
             return
         if cmd in [1, 2, 3, 4]:
-            self.next_ctx = ResultTableContext
-            self.next_ctx_args = {"table_for": self.state["tables"][cmd - 1]}
+            self.state['next_ctx'] = ResultTableContext
+            self.state['next_ctx_args'] = {"table_for": self.state["tables"][cmd - 1]}
         elif cmd == 5:
-            self.next_ctx = DriversContext
-            self.next_ctx_args = {}
+            self.state['next_ctx'] = DriversContext
+            self.state['next_ctx_args'] = {}
         elif cmd == 6:
-            self.next_ctx = NewsListContext
-            self.next_ctx_args = {}
+            self.state['next_ctx'] = NewsListContext
+            self.state['next_ctx_args'] = {}
 
 
 class ResultTableContext(Context):
@@ -222,17 +226,20 @@ class ResultTableContext(Context):
                  year: Optional[int] = None,
                  title: str = "") -> None:
         super().__init__()
-        self.name = table_for.replace("-", " ").title()
-        self.state = {
+
+        self.state.update({
+            'name': table_for.replace("-", " ").title(),
+            'next_ctx': self,
+            'custom_commands': [
+                Command(cmd='y:YEAR', label="Change Season"),
+            ],
             'for': table_for,
             'year': year if year else datetime.now().year,
             'table': table,
             'title': title
-        }
+        })
         if self.state['table'] is None:
             self._fetch_table()
-
-        self.custom_commands = [Command(cmd="y:YEAR", label="Change Season"), ]
 
     def event(self) -> None:
         table: str = self.state['table'].to_string(index=False)
@@ -241,15 +248,16 @@ class ResultTableContext(Context):
         print()
 
     def action_handler(self) -> None:
-        cmd: str = self.command
+        cmd: str = self.state['command']
         if cmd.lower().startswith("y:"):
             year: int = int(cmd.split(':')[1])
-            self.next_ctx = ResultTableContext
-            self.next_ctx_args = {
-                "table_for": self.state["for"], "year": year, "table": None}
-            Context.messages.append(Message(msg=f"Season changed to {year}", type="success"))
-            return
-        self.next_ctx = self
+            self.state['next_ctx'] = ResultTableContext
+            self.state['next_ctx_args'] = {
+                'table_for': self.state['for'],
+                'year': year,
+                'table': None
+            }
+            Context.messages.append(Message(msg=f"Season changed to {year}", type='success'))
 
     def _fetch_table(self) -> None:
         try:
@@ -281,33 +289,40 @@ class DriversContext(Context):
     def __init__(self,
                  drivers: Optional[DataFrame] = None) -> None:
         super().__init__()
-        self.state = {'drivers': drivers}
-        self.custom_commands = [Command(cmd="INDEX", label="Select Driver"), ]
-        self.name = "Drivers"
+        self.state.update({
+            'name': "Drivers",
+            'next_ctx': self,
+            'custom_commands': [
+                Command(cmd='INDEX', label="Select Driver"),
+            ],
+            'drivers': drivers,
+        })
 
     def event(self) -> None:
-        drivers: Optional[DataFrame] = self.state["drivers"]
+        drivers: Optional[DataFrame] = self.state['drivers']
         if drivers is None:
             drivers = fetch_drivers()
             drivers.index += 1
             self.state["drivers"] = drivers
-        # TODO: Context.printDataFrametable()
         self._pprint("Drivers\n", 30)
         self._pprint(drivers[["NAME", "NUMBER", "TEAM"]].to_string(), 10)
         print("\n")
 
     def action_handler(self) -> None:
-        cmd: str = self.command
+        cmd: str = self.state['command']
         if cmd and cmd.isdecimal():
             try:
                 index: int = int(cmd) - 1
                 drivers: DataFrame = self.state["drivers"]
                 driver: Series = drivers.iloc[index, :]
-                self.next_ctx = DriverContext
-                self.next_ctx_args = {'driver': driver, 'driver_index': index, 'drivers': drivers}
+                self.state['next_ctx'] = DriverContext
+                self.state['next_ctx_args'] = {
+                    'driver': driver,
+                    'driver_index': index,
+                    'drivers': drivers
+                }
             except IndexError:
                 Context.messages.append(Message(msg="Invalid Driver Index", type="error"))
-                self.next_ctx = self
 
 
 class DriverContext(Context):
@@ -318,20 +333,21 @@ class DriverContext(Context):
                  driver_index: int,
                  drivers: DataFrame) -> None:
         super().__init__()
-        self.state = {
+        self.state.update({
+            'name': driver['NAME'],
+            'next_ctx': self,
+            'custom_commands': [
+                Command(cmd='bio', label="Read Bio"),
+                Command(cmd='d', label="Next Driver"),
+                Command(cmd='a', label="Previous Driver"),
+            ],
             'driver': driver,
             'portrait': None,
             'info': None,
             'index': driver_index,
             'drivers': drivers,
             'max_drivers': len(drivers) - 1,
-        }
-        self.name = driver['NAME']
-        self.custom_commands = [
-            Command(cmd='bio', label="Read Bio"),
-            Command(cmd='d', label="Next Driver"),
-            Command(cmd='a', label="Previous Driver"),
-        ]
+        })
         DriverContext.drivers_history[driver_index] = self
 
         header = Back.LIGHTWHITE_EX
@@ -375,19 +391,19 @@ class DriverContext(Context):
             self.state['info'] = driver_info
         driver.update(driver_info)
 
-        m: int = 30
+        margin: int = 30
         for label, value in driver.items():
             if label not in ['BIO', 'URL', 'IMG']:
-                row = label.title() + ":" + str(" " * (m - len(label))) + value
+                row = label.title() + ":" + str(" " * (margin - len(label))) + value
                 self._pprint(row, 2)
         print()
 
     def action_handler(self) -> None:
-        cmd: str = self.command
+        cmd: str = self.state['command']
 
         if cmd.lower() == 'bio':
-            self.next_ctx = TextContext
-            self.next_ctx_args = {'text': self.state['info']['BIO']}
+            self.state['next_ctx'] = TextContext
+            self.state['next_ctx_args'] = {'text': self.state['info']['BIO']}
 
         elif cmd.lower() in ['d', 'a']:
             drivers = self.state['drivers']
@@ -403,30 +419,28 @@ class DriverContext(Context):
                 DriverContext.drivers_history.get(next_idx, drivers.iloc[next_idx, :])
 
             if isinstance(next_driver, DriverContext):
-                self.next_ctx = next_driver
-                self.next_ctx_args = {}
+                self.state['next_ctx'] = next_driver
+                self.state['next_ctx_args'] = {}
             else:
-                self.next_ctx = DriverContext
-                self.next_ctx_args = {
+                self.state['next_ctx'] = DriverContext
+                self.state['next_ctx_args'] = {
                     'driver': next_driver,
                     'driver_index': next_idx,
                     'drivers': drivers
                 }
 
-        else:
-            self.next_ctx = self
-
 
 class NewsListContext(Context):
     def __init__(self, articles: Optional[DataFrame] = None) -> None:
         super().__init__()
-        self.state = {
+        self.state.update({
+            'name': 'News List',
+            'custom_commands': [
+                Command(cmd='NUMBER', label="Select article"),
+            ],
             'articles': articles if articles else fetch_top_stories(img_size=9),
             'headlines': []
-        }
-        self.custom_commands = [
-            Command(cmd='NUMBER', label="Select article"),
-        ]
+        })
 
     def event(self) -> None:
         # TODO
@@ -444,18 +458,18 @@ class NewsListContext(Context):
 
     def action_handler(self) -> None:
         try:
-            index = int(self.command)
+            index = int(self.state['command'])
             articles: DataFrame = self.state['articles']
             try:
                 article: Series = articles.iloc[index - 1, :]
-
+                Context.messages.append(Message(msg=article.to_string(), type="debug"))
             except IndexError:
-                self.next_ctx = self
-                return
-
-            Context.messages.append(Message(msg=article.to_string(), type="debug"))
+                Context.messages.append(
+                    Message(msg="Invalid index", type="error")
+                )
         except ValueError:
-            self.next_ctx = self
+            # other commands
+            return
 
     @staticmethod
     def article_headline(story: Series, index: Optional[int] = None) -> str:
@@ -471,18 +485,19 @@ class NewsListContext(Context):
 class TextContext(Context):
     def __init__(self, text: str, width: int = 80) -> None:
         super().__init__()
-        self.text: str = text
-        self.width: int = width
+        self.state.update({
+            'name': 'Text',
+            'next_ctx': self,
+            'text': text,
+            'width': width
+        })
 
     def event(self) -> None:
-        wrapper: TextWrapper = TextWrapper(width=self.width)
-        word_list: List[str] = wrapper.wrap(text=self.text)
+        wrapper: TextWrapper = TextWrapper(width=self.state['width'])
+        word_list: List[str] = wrapper.wrap(text=self.state['text'])
         for element in word_list:
             self._pprint(element, 3)
         print()
-
-    def action_handler(self) -> None:
-        self.next_ctx = self
 
 
 ContextType = Union[

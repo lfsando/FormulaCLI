@@ -25,9 +25,9 @@ class FormulaCLI:
                         ctx.add_to_history()
                     clear_screen()
                     ctx.render()
-                    if ctx.next_ctx:
-                        self.state["ctx"] = ctx.next_ctx
-                        self.state["args"] = ctx.next_ctx_args
+                    if ctx.state['next_ctx']:
+                        self.state["ctx"] = ctx.state['next_ctx']
+                        self.state["args"] = ctx.state['next_ctx_args']
                 except KeyboardInterrupt:
                     ctx = self.state["ctx"]
                     if ctx.block_render:
