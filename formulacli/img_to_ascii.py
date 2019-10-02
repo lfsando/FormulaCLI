@@ -3,18 +3,18 @@ from typing import Tuple, Dict, Optional
 import math
 import numpy as np
 from PIL import Image
-from colorama import init, Back, Style
+from colorama import init, Back, Style, Fore
 
 init(convert=True)
 
-COLOR_SCHEME: Dict[Tuple[int, int, int], str] = {
+BACK_BW_SCHEME: Dict[Tuple[int, int, int], str] = {
     (0, 0, 0): Back.BLACK,
     (61, 61, 61): Back.LIGHTBLACK_EX,
     (210, 180, 140): Back.LIGHTWHITE_EX,
     (255, 255, 0): Back.WHITE
 }
 
-COLORED_SCHEME: Dict[Tuple[int, int, int], str] = {
+BACK_COLOR_SCHEME: Dict[Tuple[int, int, int], str] = {
     (0, 0, 255): Back.BLUE,
     (0, 255, 255): Back.CYAN,
     (0, 128, 0): Back.GREEN,
@@ -27,6 +27,26 @@ COLORED_SCHEME: Dict[Tuple[int, int, int], str] = {
     (255, 0, 0): Back.MAGENTA,
     (255, 255, 255): Back.RED,
 }
+FRONT_BW_SCHEME: Dict[Tuple[int, int, int], str] = {
+    (0, 0, 0): Fore.BLACK,
+    (61, 61, 61): Fore.LIGHTBLACK_EX,
+    (210, 180, 140): Fore.LIGHTWHITE_EX,
+    (255, 255, 0): Fore.WHITE
+}
+
+FRONT_COLOR_SCHEME: Dict[Tuple[int, int, int], str] = {
+    (0, 0, 255): Fore.BLUE,
+    (0, 255, 255): Fore.CYAN,
+    (0, 128, 0): Fore.GREEN,
+    (65, 105, 225): Fore.LIGHTBLUE_EX,
+    (46, 139, 87): Fore.LIGHTCYAN_EX,
+    (186, 85, 211): Fore.LIGHTGREEN_EX,
+    (220, 20, 60): Fore.LIGHTMAGENTA_EX,
+    (189, 189, 189): Fore.LIGHTRED_EX,
+    (218, 112, 214): Fore.LIGHTYELLOW_EX,
+    (255, 0, 0): Fore.MAGENTA,
+    (255, 255, 255): Fore.RED,
+}
 
 
 def distance(c1, c2) -> float:
@@ -36,6 +56,8 @@ def distance(c1, c2) -> float:
 
 
 def color_to_ansi(px: Tuple[int, int, int], colors: Dict[Tuple[int, int, int], str]) -> str:
+    if colors is None:
+        raise ValueError
     min_val: float = 256.0
     min_col: str = ""
     for i, (rgb, color) in enumerate(colors.items()):
@@ -50,16 +72,29 @@ def color_to_ansi(px: Tuple[int, int, int], colors: Dict[Tuple[int, int, int], s
 
 def convert(im: Image,
             color_scheme: Optional[Dict[Tuple[int, int, int], str]] = None,
+            colored: bool = False,
+            brush: Optional[str] = None,
             ) -> str:
-    if color_scheme is None:
-        color_scheme = COLOR_SCHEME
+    if brush is None:
+        brush = " "
+        if colored:
+            color_scheme = BACK_COLOR_SCHEME
+        else:
+            color_scheme = BACK_BW_SCHEME
+    else:
+        if colored:
+            color_scheme = FRONT_COLOR_SCHEME
+        else:
+            color_scheme = FRONT_BW_SCHEME
+
     initial_pixels: np.array = np.array(im)
-    photo: str = ""
+    picture: str = ""
     for i, row in enumerate(initial_pixels):
         for j, px in enumerate(row):
-            photo += color_to_ansi(px, color_scheme)
-            photo += " "
-        photo += "\n"
-    photo += Back.RESET
-    photo += Style.RESET_ALL
-    return photo
+            picture += color_to_ansi(px, color_scheme)
+            picture += brush
+        picture += "\n"
+    picture += Back.RESET
+    picture += Fore.RESET
+    picture += Style.RESET_ALL
+    return picture

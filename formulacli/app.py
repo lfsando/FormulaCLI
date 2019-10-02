@@ -2,7 +2,6 @@ import sys
 from typing import Dict, Any
 
 import colorama
-from requests.exceptions import ConnectionError
 
 from formulacli import contexts
 from formulacli.exceptions import ExitException
@@ -42,9 +41,6 @@ class FormulaCLI:
             self.close("Graciously exiting.")
         except EOFError:
             self.close()
-        except ConnectionError:
-            self.close(
-                "Connection error: Max retry exceeded. Check your internet connection. Exiting application. Bye!")
 
     @staticmethod
     def close(msg: str = "Graciously exiting.") -> None:

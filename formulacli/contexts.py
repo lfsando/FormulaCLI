@@ -19,16 +19,16 @@ from formulacli.img_to_ascii import convert
 from formulacli.news import fetch_top_stories
 from formulacli.result_tables import fetch_results
 
-if sys.platform in ["linux", "linux2", "darwin"]:
+if sys.platform in ['linux', 'linux2', 'darwin']:
     from getch import getch as read_key
-elif sys.platform == "win32":
+elif sys.platform == 'win32':
     from msvcrt import getch as read_key
 
 Command = namedtuple("Command", ['cmd', 'label'])
 Option = namedtuple("Option", ['opt', 'label'])
 Message = namedtuple("Message", ['msg', 'type'])
 
-banner = Banner()
+BANNER = Banner()
 
 
 class Context:
@@ -40,28 +40,31 @@ class Context:
         self.name: str = "context"
         self.state: Dict[str, Any] = {}
         self.custom_commands: List[Command] = []
-        self.command: str = ""
+        self.command: str = ''
         self.menu_options: List[Option] = []
         self.next_ctx_args: Dict[str, Any] = {}
         self.next_ctx: ContextType = self
         self.show_banner: bool = False
         self.string_input: bool = False
+        self.show_tip: bool = False
 
     def __str__(self):
         return self.name
 
     def render(self) -> None:
-        Context.messages.append(Message(msg=self.name, type='debug'))
+        print(self)
         if self.show_banner:
             print(self.banner)
         self.show_options()
         self.event()
         print()
         self.show_messages()
-        self.show_commands()
 
         # TODO: Move below to action_handler
-        self.command: str = self.get_commands()
+        if self.show_tip:
+            print("Press h for help.")
+        self.command = self.get_commands()
+
         if self.command.lower() in ['q', 'quit', 'exit']:
             raise ExitException
         elif self.command.lower() in ['m', 'menu']:
@@ -77,7 +80,9 @@ class Context:
                 self.next_ctx = MainContext
                 self.next_ctx_args = {}
             return
-        elif self.command.lower() == "'":
+        elif self.command.lower() in ['?', 'h', 'help']:
+            self.show_help()
+        elif self.command.lower() == '\'':
             self.string_input = True
 
         self.action_handler()
@@ -102,36 +107,33 @@ class Context:
 
         while messages:
             message: Message = messages.pop()
-            if message.type == "error":
+            if message.type == 'error':
                 self._pprint(f"{Fore.RED}{message.msg}{Style.RESET_ALL}", margin=10)
-            elif message.type == "success":
+            elif message.type == 'success':
                 self._pprint(f"{Fore.LIGHTGREEN_EX}{message.msg}{Style.RESET_ALL}", margin=10)
-            elif message.type == "debug":
+            elif message.type == 'debug':
                 self._pprint(f"{Fore.LIGHTCYAN_EX}{message.msg}{Style.RESET_ALL}", margin=10)
 
-    def show_commands(self, template: str = "[{}] {}") -> None:
+    def show_help(self) -> None:
         commands: List[Command] = []
-        commands += [Command(cmd="'", label="Write command")]
+        commands += [Command(cmd='\'', label="Write command")]
         commands += self.custom_commands
 
         if len(Context.history) > 1:
-            commands.append(Command(cmd="b", label="Back"))
+            commands.append(Command(cmd='b', label="Back"))
         commands += [
-            Command(cmd="m", label="Menu"),
-            Command(cmd="q", label="Quit")
+            Command(cmd='h', label="Show commands"),
+            Command(cmd='m', label="Menu"),
+            Command(cmd='q', label="Quit")
         ]
-        self._pprint("\nCommands", 30)
-        for i, command in enumerate(commands):
-            if command.cmd in ['b', 'm']:
-                print()
-            elif i % 2 == 0:
-                print()
-            print(str(" " * 2) + template.format(command.cmd, command.label), end=" ")
-        print()
+        commands_df = DataFrame(commands, columns=["Commands", "?"]).to_string(index=False)
+        Context.messages.append(Message(msg=commands_df, type='success'))
 
     @staticmethod
     def convert_image(
             url: str,
+            brush: Optional[str] = None,
+            colored: bool = False,
             ratio: Tuple[Union[float, int], Union[float, int]] = (1, 1),
             size: Optional[Tuple[int, int]] = None,
             crop_box: Optional[Tuple[int, int, int, int]] = None) -> str:
@@ -148,25 +150,29 @@ class Context:
         elif ratio:
             im = im.resize((round(im.size[0] * ratio[0]), round(im.size[1] * ratio[1])))
 
-        return convert(im)
+        return convert(im, colored=colored, brush=brush)
 
     def get_commands(self) -> str:
-        cmd: str = ""
+        cmd: str = ''
         try:
             if self.string_input:
                 cmd = str(input(">> ")).strip()
                 self.string_input = False
             else:
-                cmd = read_key()
-                if isinstance(cmd, bytes):
-                    cmd = cmd.decode()
+                try:
+                    cmd = read_key()
+
+                    if isinstance(cmd, bytes):
+                        cmd = cmd.decode()
+                except UnicodeDecodeError:
+                    cmd = ""
         except EOFError:
-            Context.messages.append(Message(msg="Invalid Command", type="error"))
+            Context.messages.append(Message(msg="Invalid Command", type='error'))
         return cmd
 
     @property
     def banner(self):
-        return str(banner) + "\n" + DESCRIPTION
+        return str(BANNER) + "\n" + DESCRIPTION
 
     @staticmethod
     def _pprint(text, margin=10, end="\n"):
@@ -175,6 +181,7 @@ class Context:
 
 
 class MainContext(Context):
+
     def __init__(self) -> None:
         super().__init__()
         self.name = "Main Menu"
@@ -186,16 +193,17 @@ class MainContext(Context):
             Option(opt=5, label="Drivers"),
             Option(opt=6, label="Latest News"),
         ]
-        self.custom_commands = [Command(cmd="NUMBER", label="Select Option"), ]
-        self.state = {"tables": ["drivers", "team", "races", "fastest-laps"]}
+        self.custom_commands = [Command(cmd='NUMBER', label="Select Option"), ]
+        self.state = {'tables': ['drivers', 'team', 'races', 'fastest-laps']}
         self.show_banner = True
+        self.show_tip = True
+        self.next_ctx = self
 
     def action_handler(self) -> None:
         try:
             cmd: int = int(self.command)
         except ValueError:
-            Context.messages.append(Message(msg="Invalid Command", type="Error"))
-            self.next_ctx = self
+            Context.messages.append(Message(msg="Invalid Command", type='error'))
             return
         if cmd in [1, 2, 3, 4]:
             self.next_ctx = ResultTableContext
@@ -249,7 +257,9 @@ class ResultTableContext(Context):
         except ValueError:
             self.state['year'] = datetime.now().year
             table = fetch_results(self.state['for'], self.state['year'])
-            Context.messages.append(Message(msg=f"Invalid Season. [1950-{self.state['year']}]", type="error"))
+            Context.messages.append(
+                Message(msg=f"Invalid Season. [1950-{self.state['year']}]", type="error")
+            )
         self.state['table'] = table
 
     @property
@@ -268,10 +278,12 @@ class ResultTableContext(Context):
 
 
 class DriversContext(Context):
-    def __init__(self, drivers: Optional[DataFrame] = None) -> None:
+    def __init__(self,
+                 drivers: Optional[DataFrame] = None) -> None:
         super().__init__()
         self.state = {'drivers': drivers}
         self.custom_commands = [Command(cmd="INDEX", label="Select Driver"), ]
+        self.name = "Drivers"
 
     def event(self) -> None:
         drivers: Optional[DataFrame] = self.state["drivers"]
@@ -301,7 +313,10 @@ class DriversContext(Context):
 class DriverContext(Context):
     drivers_history: Dict[int, Context] = {}
 
-    def __init__(self, driver: Union[Series, Dict[str, str]], driver_index: int, drivers: DataFrame) -> None:
+    def __init__(self,
+                 driver: Union[Series, Dict[str, str]],
+                 driver_index: int,
+                 drivers: DataFrame) -> None:
         super().__init__()
         self.state = {
             'driver': driver,
@@ -311,6 +326,7 @@ class DriverContext(Context):
             'drivers': drivers,
             'max_drivers': len(drivers) - 1,
         }
+        self.name = driver['NAME']
         self.custom_commands = [
             Command(cmd='bio', label="Read Bio"),
             Command(cmd='d', label="Next Driver"),
@@ -319,9 +335,9 @@ class DriverContext(Context):
         DriverContext.drivers_history[driver_index] = self
 
         header = Back.LIGHTWHITE_EX
-        driver_names = list(drivers["NAME"])
+        driver_names = list(drivers['NAME'])
         for name in driver_names:
-            if name == driver["NAME"]:
+            if name == driver['NAME']:
                 header += Fore.RED
                 header += Back.WHITE
                 header += name.split(' ')[-1]
@@ -336,7 +352,7 @@ class DriverContext(Context):
         else:
             header += Back.RESET
         self.header = header
-        self.reset = True # needs fixing
+        self.reset = True  # needs fixing
 
     def event(self) -> None:
         self._pprint(self.header + "\n", margin=2)
@@ -391,19 +407,26 @@ class DriverContext(Context):
                 self.next_ctx_args = {}
             else:
                 self.next_ctx = DriverContext
-                self.next_ctx_args = {'driver': next_driver, 'driver_index': next_idx, 'drivers': drivers}
+                self.next_ctx_args = {
+                    'driver': next_driver,
+                    'driver_index': next_idx,
+                    'drivers': drivers
+                }
 
         else:
             self.next_ctx = self
 
 
 class NewsListContext(Context):
-    def __init__(self, stories: Optional[DataFrame] = None) -> None:
+    def __init__(self, articles: Optional[DataFrame] = None) -> None:
         super().__init__()
         self.state = {
-            'stories': stories if stories else fetch_top_stories(),
+            'articles': articles if articles else fetch_top_stories(img_size=9),
             'headlines': []
         }
+        self.custom_commands = [
+            Command(cmd='NUMBER', label="Select article"),
+        ]
 
     def event(self) -> None:
         # TODO
@@ -412,7 +435,7 @@ class NewsListContext(Context):
             for headline in headlines:
                 print(headline)
         else:
-            stories: DataFrame = self.state['stories']
+            stories: DataFrame = self.state['articles']
             for i, story in stories.iterrows():
                 headline = self.article_headline(story, i + 1)
                 print(headline)
@@ -420,13 +443,24 @@ class NewsListContext(Context):
         self.state['headlines'] = headlines
 
     def action_handler(self) -> None:
-        self.next_ctx = self
+        try:
+            index = int(self.command)
+            articles: DataFrame = self.state['articles']
+            try:
+                article: Series = articles.iloc[index - 1, :]
 
-    def article_headline(self, story: Series, index: Optional[int] = None) -> str:
+            except IndexError:
+                self.next_ctx = self
+                return
+
+            Context.messages.append(Message(msg=article.to_string(), type="debug"))
+        except ValueError:
+            self.next_ctx = self
+
+    @staticmethod
+    def article_headline(story: Series, index: Optional[int] = None) -> str:
         headline: str = ""
         if 'main-story' in story.tags:
-            headline += self.convert_image(story.img, size=(50, 30))
-
             headline += Style.BRIGHT
         headline += f"[{index}] [{story.tags[-1].upper()}]\t {story['headline']}" + Style.RESET_ALL
         headline = headline + '\n'
