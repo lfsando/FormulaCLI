@@ -52,7 +52,6 @@ class Context:
         return self.state['name']
 
     def render(self) -> None:
-        print(self)
         if self.state['show_banner']:
             print(self.banner)
         self.show_options()
