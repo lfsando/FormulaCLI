@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+import sys
 from collections import namedtuple
 from datetime import datetime
 from textwrap import TextWrapper
-from typing import List, Dict, Any, Union, Optional, Type
+from typing import List, Dict, Any, Union, Optional, Type, Tuple
 
 from PIL import Image
 from colorama import Fore, Style, Back
@@ -18,9 +19,16 @@ from formulacli.img_to_ascii import convert
 from formulacli.news import fetch_top_stories
 from formulacli.result_tables import fetch_results
 
+if sys.platform in ["linux", "linux2", "darwin"]:
+    from getch import getch as read_key
+elif sys.platform == "win32":
+    from msvcrt import getch as read_key
+
 Command = namedtuple("Command", ['cmd', 'label'])
 Option = namedtuple("Option", ['opt', 'label'])
 Message = namedtuple("Message", ['msg', 'type'])
+
+banner = Banner()
 
 
 class Context:
@@ -37,6 +45,7 @@ class Context:
         self.next_ctx_args: Dict[str, Any] = {}
         self.next_ctx: ContextType = self
         self.show_banner: bool = False
+        self.string_input: bool = False
 
     def __str__(self):
         return self.name
@@ -50,26 +59,26 @@ class Context:
         print()
         self.show_messages()
         self.show_commands()
-        if self.block_render:
-            cmd: str = self._get_commands()
-            if cmd.lower() in ['q', 'quit', 'exit']:
-                raise ExitException
-            elif cmd.lower() in ['m', 'menu']:
+
+        # TODO: Move below to action_handler
+        self.command: str = self.get_commands()
+        if self.command.lower() in ['q', 'quit', 'exit']:
+            raise ExitException
+        elif self.command.lower() in ['m', 'menu']:
+            self.next_ctx = MainContext
+            self.next_ctx_args = {}
+            return
+        elif self.command.lower() in ['b', 'back']:
+            try:
+                Context.history.pop()
+                self.next_ctx = Context.history[-1]
+                self.next_ctx_args = {}
+            except IndexError:
                 self.next_ctx = MainContext
                 self.next_ctx_args = {}
-                return
-            elif cmd.lower() in ['b', 'back']:
-                try:
-                    Context.history.pop()
-                    self.next_ctx = Context.history[-1]
-                    self.next_ctx_args = {}
-                except IndexError:
-                    self.next_ctx = MainContext
-                    self.next_ctx_args = {}
-                return
-
-            else:
-                self.command = cmd.lower()
+            return
+        elif self.command.lower() == "'":
+            self.string_input = True
 
         self.action_handler()
 
@@ -102,6 +111,7 @@ class Context:
 
     def show_commands(self, template: str = "[{}] {}") -> None:
         commands: List[Command] = []
+        commands += [Command(cmd="'", label="Write command")]
         commands += self.custom_commands
 
         if len(Context.history) > 1:
@@ -120,23 +130,42 @@ class Context:
         print()
 
     @staticmethod
-    def convert_image(img_url: str, size) -> str:
-        im_bytes: HTTPResponse = get_response(img_url, b=True)
-        im: Image = Image.open(im_bytes)
-        return convert(im, colored=True, size=size)
+    def convert_image(
+            url: str,
+            ratio: Tuple[Union[float, int], Union[float, int]] = (1, 1),
+            size: Optional[Tuple[int, int]] = None,
+            crop_box: Optional[Tuple[int, int, int, int]] = None) -> str:
 
-    @staticmethod
-    def _get_commands() -> str:
+        im_bytes: HTTPResponse = get_response(url, b=True)
+        im: Image = Image.open(im_bytes)
+        if crop_box is not None:
+            im = im.crop(crop_box)
+
+        if ratio and size:
+            im = im.resize(round(size[0] * ratio[0]), round(size[1] * ratio[1]))
+        elif size:
+            im = im.resize(size)
+        elif ratio:
+            im = im.resize((round(im.size[0] * ratio[0]), round(im.size[1] * ratio[1])))
+
+        return convert(im)
+
+    def get_commands(self) -> str:
         cmd: str = ""
         try:
-            cmd = str(input(">> ")).strip()
+            if self.string_input:
+                cmd = str(input(">> ")).strip()
+                self.string_input = False
+            else:
+                cmd = read_key()
+                if isinstance(cmd, bytes):
+                    cmd = cmd.decode()
         except EOFError:
             Context.messages.append(Message(msg="Invalid Command", type="error"))
         return cmd
 
     @property
     def banner(self):
-        banner = Banner()
         return str(banner) + "\n" + DESCRIPTION
 
     @staticmethod
@@ -218,8 +247,8 @@ class ResultTableContext(Context):
         try:
             table: DataFrame = fetch_results(self.state['for'], self.state['year'])
         except ValueError:
-            table = fetch_results(self.state['for'], self.state['year'])
             self.state['year'] = datetime.now().year
+            table = fetch_results(self.state['for'], self.state['year'])
             Context.messages.append(Message(msg=f"Invalid Season. [1950-{self.state['year']}]", type="error"))
         self.state['table'] = table
 
@@ -280,12 +309,12 @@ class DriverContext(Context):
             'info': None,
             'index': driver_index,
             'drivers': drivers,
-            'max_drivers': len(drivers) - 1
+            'max_drivers': len(drivers) - 1,
         }
         self.custom_commands = [
             Command(cmd='bio', label="Read Bio"),
             Command(cmd='d', label="Next Driver"),
-            Command(cmd='a', label="Previous Driver")
+            Command(cmd='a', label="Previous Driver"),
         ]
         DriverContext.drivers_history[driver_index] = self
 
@@ -307,13 +336,19 @@ class DriverContext(Context):
         else:
             header += Back.RESET
         self.header = header
+        self.reset = True # needs fixing
 
     def event(self) -> None:
         self._pprint(self.header + "\n", margin=2)
 
         portrait: Optional[str] = self.state['portrait']
-        if portrait is None:
-            portrait = self.convert_image(self.state['driver']['IMG'], size=(30, 15))
+        if portrait is None or self.reset:
+            portrait = self.convert_image(url=self.state['driver']['IMG'],
+                                          # size=(30, 20),
+                                          ratio=(0.45, 0.22),
+                                          crop_box=(105, 5, 215, 120)
+                                          )
+            self.reset = False
             self.state['portrait'] = portrait
         self._pprint(portrait, 7)
 
@@ -366,23 +401,35 @@ class NewsListContext(Context):
     def __init__(self, stories: Optional[DataFrame] = None) -> None:
         super().__init__()
         self.state = {
-            'stories': stories if stories else fetch_top_stories()
+            'stories': stories if stories else fetch_top_stories(),
+            'headlines': []
         }
 
     def event(self) -> None:
         # TODO
-        stories: DataFrame = self.state['stories']
-        for i, story in stories.iterrows():
-            print(self.article_headline(story, i + 1))
+        headlines = self.state['headlines']
+        if headlines:
+            for headline in headlines:
+                print(headline)
+        else:
+            stories: DataFrame = self.state['stories']
+            for i, story in stories.iterrows():
+                headline = self.article_headline(story, i + 1)
+                print(headline)
+                headlines.append(headline)
+        self.state['headlines'] = headlines
 
     def action_handler(self) -> None:
         self.next_ctx = self
 
-    @staticmethod
-    def article_headline(story: Series, index: Optional[int] = None, line: int = 200) -> str:
-        headline: str = f"[{index}] {story['headline']} - tags: [{', '.join(story.tags)}]"
-        sep: str = str("-" * (line + 10))
-        headline = sep + "\n" + headline + "\n" + sep
+    def article_headline(self, story: Series, index: Optional[int] = None) -> str:
+        headline: str = ""
+        if 'main-story' in story.tags:
+            headline += self.convert_image(story.img, size=(50, 30))
+
+            headline += Style.BRIGHT
+        headline += f"[{index}] [{story.tags[-1].upper()}]\t {story['headline']}" + Style.RESET_ALL
+        headline = headline + '\n'
 
         return headline
 

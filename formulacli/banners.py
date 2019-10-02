@@ -47,10 +47,10 @@ class Banner:
                 Fore.WHITE + Back.BLACK,
             ]
         self.banner = random.choice(banners)
+        self.theme = random.choice(self.themes)
 
     def __str__(self):
-        theme = random.choice(self.themes)
         style = random.choice([Style.DIM, Style.BRIGHT, Style.NORMAL])
         reset = Style.RESET_ALL
 
-        return theme + self.banner + style + reset
+        return self.theme + self.banner + style + reset

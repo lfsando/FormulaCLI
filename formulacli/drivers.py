@@ -17,7 +17,7 @@ def parse_drivers(soup: BeautifulSoup) -> DataFrame:
             "NUMBER": driver_div.find("div", class_='driver-number').text.strip(),
             "TEAM": driver_div.find("p", class_='driver-team').text.strip(),
             "URL": BASE_URL + driver_div['href'],
-            "IMG": BASE_URL + driver_div.figure.img["src"]
+            "IMG": BASE_URL + driver_div.figure.img["src"].replace("medium", "low")
         }
 
         drivers.append(driver)

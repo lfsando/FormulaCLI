@@ -13,6 +13,6 @@ pandas = "*"
 bs4 = "*"
 pillow = "*"
 numpy = "*"
-
+getch = {version = "*", sys_platform = "in ['linux', 'darwin']"}
 [requires]
 python_version = "3.7"

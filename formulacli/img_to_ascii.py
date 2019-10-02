@@ -49,23 +49,15 @@ def color_to_ansi(px: Tuple[int, int, int], colors: Dict[Tuple[int, int, int], s
 
 
 def convert(im: Image,
-            size: Tuple[int, int] = (55, 25),
-            colored: bool = False,
             color_scheme: Optional[Dict[Tuple[int, int, int], str]] = None,
-            cropped: Tuple[int, int, int, int] = (100, 10, 220, 130)) -> str:
-    if not color_scheme:
+            ) -> str:
+    if color_scheme is None:
         color_scheme = COLOR_SCHEME
-    if cropped:
-        im = im.crop(cropped)
-    if size:
-        im = im.resize(size)
-
     initial_pixels: np.array = np.array(im)
     photo: str = ""
     for i, row in enumerate(initial_pixels):
         for j, px in enumerate(row):
-            if colored and color_scheme:
-                photo += color_to_ansi(px, color_scheme)
+            photo += color_to_ansi(px, color_scheme)
             photo += " "
         photo += "\n"
     photo += Back.RESET
