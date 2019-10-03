@@ -20,5 +20,6 @@ def get_response(url: str, b: bool = False) -> Union[str, HTTPResponse]:
         print(e)
         sys.exit()
 
+
 def parse(response: str) -> BeautifulSoup:
     return BeautifulSoup(response, 'html.parser')
