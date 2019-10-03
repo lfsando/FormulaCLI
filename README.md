@@ -6,12 +6,12 @@ Feel free to contribute in any way you can!
 ### How to install
 
 
-clone it:
+Step 1: Clone it:
 ```console
   $ git clone https://github.com/lfsando/FormulaCLI.git
 ```
 
-install it:
+Step 2: Install it:
 ```console
   $ pipenv install
 ```
@@ -20,7 +20,7 @@ or
   $ pip install -r requirements.txt
 ```
 
-run it:
+Step 3: Run it:
 ```console
   $ python formulacli.py
 ```
