@@ -19,3 +19,5 @@ def test_parse():
     response = requests.get('http://216.58.192.142')
     soup = parse(response.text)
     assert isinstance(soup, BeautifulSoup)
+
+

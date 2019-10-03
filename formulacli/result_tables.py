@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional, List
 
-import pandas as pd
+from pandas import DataFrame
 from bs4 import BeautifulSoup
 
 from formulacli.html_handlers import get_response, parse
@@ -35,7 +35,7 @@ def get_values(table: BeautifulSoup) -> List[List[str]]:
     return entries
 
 
-def fetch_results(_for: str = "drivers", year: Optional[int] = None) -> pd.DataFrame:
+def fetch_results(_for: str = "drivers", year: Optional[int] = None) -> DataFrame:
     if not year:
         year = datetime.now().year
 
@@ -47,4 +47,4 @@ def fetch_results(_for: str = "drivers", year: Optional[int] = None) -> pd.DataF
     cols: List[str] = get_cols(table)
     entries: List[List[str]] = get_values(table)
 
-    return pd.DataFrame(entries, columns=cols)
+    return DataFrame(entries, columns=cols)

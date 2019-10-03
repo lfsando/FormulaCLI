@@ -1,4 +1,4 @@
-import random
+from random import choice
 from typing import List, Optional
 
 from colorama import Fore, Back, Style
@@ -46,11 +46,11 @@ class Banner:
                 Fore.RED + Back.WHITE,
                 Fore.WHITE + Back.BLACK,
             ]
-        self.banner = random.choice(banners)
-        self.theme = random.choice(self.themes)
+        self.banner = choice(banners)
+        self.theme = choice(self.themes)
 
     def __str__(self):
-        style = random.choice([Style.DIM, Style.BRIGHT, Style.NORMAL])
+        style = choice([Style.DIM, Style.BRIGHT, Style.NORMAL])
         reset = Style.RESET_ALL
 
         return self.theme + self.banner + style + reset

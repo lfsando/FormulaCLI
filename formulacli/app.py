@@ -1,7 +1,15 @@
-import sys
+"""
+    formulacli.app
+    ~~~~~~~~~~~~~~
+
+    Controls the context objects and main loop.
+
+"""
+
+from sys import exit
 from typing import Dict, Any
 
-import colorama
+from colorama import Style
 
 from formulacli import contexts
 from formulacli.exceptions import ExitException
@@ -10,6 +18,11 @@ from formulacli.helpers import clear_screen
 
 class FormulaCLI:
     def __init__(self) -> None:
+        """
+        Context Manager.
+        Changes context based on state change of Context type objects.
+        :rtype: None
+        """
         self.state: Dict[str, Any] = {
             "ctx": contexts.MainContext,
             "args": {}
@@ -34,7 +47,7 @@ class FormulaCLI:
                         self.close()
                     else:
                         ctx.block_render = True
-                        print(colorama.Style.RESET_ALL)
+                        print(Style.RESET_ALL)
                         self.state["ctx"] = ctx
 
         except ExitException:
@@ -45,4 +58,4 @@ class FormulaCLI:
     @staticmethod
     def close(msg: str = "Graciously exiting.") -> None:
         print(msg)
-        sys.exit()
+        exit()

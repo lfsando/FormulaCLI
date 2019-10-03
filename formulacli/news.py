@@ -1,4 +1,4 @@
-import re
+from re import compile
 from typing import Dict, Pattern, Union, List
 
 from bs4 import BeautifulSoup
@@ -11,7 +11,7 @@ from formulacli.urls import BASE_URL, LATEST_NEWS_URL
 def parse_top_stories(soup: BeautifulSoup, img_size: int = 1) -> List[Dict[str, Union[str, List[str]]]]:
     article_html = soup.find_all("div", {"class": "col-lg-6 col-md-12"})
 
-    img_group_pat: Pattern[str] = re.compile(r'(^.*transform/)(\d)(col/\w+\.\w+$)')
+    img_group_pat: Pattern[str] = compile(r'(^.*transform/)(\d)(col/\w+\.\w+$)')
     img_size_sub: str = r'\g<1>' + str(img_size) + r'\g<3>'
 
     articles: List[Dict[str, Union[str, List[str]]]] = []

@@ -1,7 +1,7 @@
 from typing import Tuple, Dict, Optional
 
-import math
-import numpy as np
+from math import sqrt
+from numpy import array
 from PIL import Image
 from colorama import init, Back, Style, Fore
 
@@ -52,7 +52,7 @@ FRONT_COLOR_SCHEME: Dict[Tuple[int, int, int], str] = {
 def distance(c1, c2) -> float:
     (r1, g1, b1) = c1
     (r2, g2, b2) = c2
-    return math.sqrt((r1 - r2) ** 2 + (g1 - g2) ** 2 + (b1 - b2) ** 2)
+    return sqrt((r1 - r2) ** 2 + (g1 - g2) ** 2 + (b1 - b2) ** 2)
 
 
 def color_to_ansi(px: Tuple[int, int, int], colors: Dict[Tuple[int, int, int], str]) -> str:
@@ -87,7 +87,7 @@ def convert(im: Image,
         else:
             color_scheme = FRONT_BW_SCHEME
 
-    initial_pixels: np.array = np.array(im)
+    initial_pixels: array = array(im)
     picture: str = ""
     for i, row in enumerate(initial_pixels):
         for j, px in enumerate(row):
