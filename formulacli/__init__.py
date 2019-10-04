@@ -1,2 +1,6 @@
-"""TODO: MODULE DOCSTRING HERE """
+"""
+    formulacli
+    ~~~~~~~~~~
+
+"""
 from formulacli.app import FormulaCLI

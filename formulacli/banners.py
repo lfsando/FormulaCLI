@@ -1,3 +1,11 @@
+"""
+    formulacli.banners
+    ~~~~~~~~~~~~~~~~~~
+
+    Provides different banners for the main menu.
+
+"""
+
 from random import choice
 from typing import List, Optional
 
@@ -37,6 +45,10 @@ class Banner:
     banner: str
 
     def __init__(self, themes: Optional[List[int]] = None) -> None:
+        """
+        Chooses a random color pallet and banner.
+        :param themes:
+        """
         if themes:
             self.themes = themes
         else:

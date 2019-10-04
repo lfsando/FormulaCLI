@@ -4,18 +4,15 @@ import sys
 from collections import namedtuple
 from datetime import datetime
 from textwrap import TextWrapper
-from typing import List, Dict, Any, Union, Optional, Type, Tuple
+from typing import List, Dict, Any, Union, Optional, Type
 
-from PIL import Image
 from colorama import Fore, Style, Back
 from pandas import DataFrame, Series
-from urllib3 import HTTPResponse
 
 from formulacli.banners import Banner, DESCRIPTION
 from formulacli.drivers import fetch_drivers, fetch_driver
 from formulacli.exceptions import ExitException
-from formulacli.html_handlers import get_response
-from formulacli.img_to_ascii import convert
+from formulacli.img_converter import convert_image
 from formulacli.news import fetch_top_stories
 from formulacli.result_tables import fetch_results
 
@@ -59,16 +56,16 @@ class Context:
         print()
         self.show_messages()
         print("Press h for help.")
-
         self.state['command'] = cmd = self.get_commands()
 
         if cmd.lower() in ['q', 'quit', 'exit']:
             raise ExitException
-        elif cmd.lower() in ['m', 'menu']:
+
+        if cmd.lower() in ['m', 'menu']:
             self.state['next_ctx'] = MainContext
             self.state['next_ctx_args'] = {}
             return
-        elif cmd.lower() in ['b', 'back']:
+        if cmd.lower() in ['b', 'back']:
             try:
                 Context.history.pop()
                 self.state['next_ctx'] = Context.history[-1]
@@ -77,13 +74,12 @@ class Context:
                 self.state['next_ctx'] = MainContext
                 self.state['next_ctx_args'] = {}
             return
-        elif cmd.lower() in ['?', 'h', 'help']:
+        if cmd.lower() in ['?', 'h', 'help']:
             self.show_help()
             self.state['next_ctx'] = Context.history[-1]
             return
-        elif cmd.lower() == '\'':
+        if cmd.lower() == '\'':
             self.state['string_input'] = True
-
         self.action_handler()
 
     def action_handler(self) -> None:
@@ -128,29 +124,6 @@ class Context:
         commands_df = DataFrame(commands, columns=["Commands", "?"]).to_string(index=False)
         Context.messages.append(Message(msg=commands_df, type='success'))
 
-    @staticmethod
-    def convert_image(
-            url: str,
-            brush: Optional[str] = None,
-            colored: bool = False,
-            ratio: Tuple[Union[float, int], Union[float, int]] = (1, 1),
-            size: Optional[Tuple[int, int]] = None,
-            crop_box: Optional[Tuple[int, int, int, int]] = None) -> str:
-
-        im_bytes: HTTPResponse = get_response(url, b=True)
-        im: Image = Image.open(im_bytes)
-        if crop_box is not None:
-            im = im.crop(crop_box)
-
-        if ratio and size:
-            im = im.resize(round(size[0] * ratio[0]), round(size[1] * ratio[1]))
-        elif size:
-            im = im.resize(size)
-        elif ratio:
-            im = im.resize((round(im.size[0] * ratio[0]), round(im.size[1] * ratio[1])))
-
-        return convert(im, colored=colored, brush=brush)
-
     def get_commands(self) -> str:
         cmd: str = ''
         try:
@@ -179,7 +152,6 @@ class Context:
 
 
 class MainContext(Context):
-
     def __init__(self) -> None:
         super().__init__()
         self.state.update({
@@ -364,8 +336,8 @@ class DriverContext(Context):
                 header += name.split(' ')[-1]
                 header += Fore.RESET
             header += "  "
-        else:
-            header += Back.RESET
+
+        header += Back.RESET
         self.header = header
         self.reset = True  # needs fixing
 
@@ -374,20 +346,18 @@ class DriverContext(Context):
 
         portrait: Optional[str] = self.state['portrait']
         if portrait is None or self.reset:
-            portrait = self.convert_image(url=self.state['driver']['IMG'],
-                                          # size=(30, 20),
-                                          ratio=(0.45, 0.22),
-                                          crop_box=(105, 5, 215, 120)
-                                          )
+            portrait = convert_image(url=self.state['driver']['IMG'],
+                                     ratio=(0.45, 0.22),
+                                     crop_box=(105, 5, 215, 120)
+                                     )
             self.reset = False
             self.state['portrait'] = portrait
         self._pprint(portrait, 7)
 
         driver: Union[Dict[str, str]] = dict(self.state['driver'])
         driver_info: Optional[Dict[str, str]] = self.state['info']
-        if driver_info is None:
-            driver_info = fetch_driver(driver['URL'])
-            self.state['info'] = driver_info
+        driver_info = driver_info or fetch_driver(driver['URL'])
+        self.state['info'] = driver_info
         driver.update(driver_info)
 
         margin: int = 30
