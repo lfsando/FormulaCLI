@@ -2,11 +2,10 @@
     formulacli.app
     ~~~~~~~~~~~~~~
 
-    Controls the context objects and main loop.
+    Controls Context objects and main loop.
 
 """
-
-from sys import exit
+import sys
 from typing import Dict, Any
 
 from colorama import Style
@@ -17,18 +16,20 @@ from formulacli.helpers import clear_screen
 
 
 class FormulaCLI:
+    """
+    Context Manager.
+    Changes context based on state change of Context objects.
+    """
     def __init__(self) -> None:
-        """
-        Context Manager.
-        Changes context based on state change of Context type objects.
-        :rtype: None
-        """
         self.state: Dict[str, Any] = {
             "ctx": contexts.MainContext,
             "args": {}
         }
 
     def run(self) -> None:
+        """
+        Starts the main loop
+        """
         try:
             while True:
                 try:
@@ -57,5 +58,9 @@ class FormulaCLI:
 
     @staticmethod
     def close(msg: str = "Graciously exiting.") -> None:
+        """
+        Exits the program graciously
+        :param msg: Exit message
+        """
         print(msg)
-        exit()
+        sys.exit()

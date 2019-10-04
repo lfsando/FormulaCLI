@@ -1,9 +1,12 @@
-from typing import Tuple, Dict, Optional
+from typing import Tuple, Dict, Optional, Union
 
 from math import sqrt
 from numpy import array
 from PIL import Image
 from colorama import init, Back, Style, Fore
+from urllib3 import HTTPResponse
+
+from formulacli.html_handlers import get_response
 
 init(convert=True)
 
@@ -70,11 +73,33 @@ def color_to_ansi(px: Tuple[int, int, int], colors: Dict[Tuple[int, int, int], s
     return min_col + Style.BRIGHT
 
 
-def convert(im: Image,
-            color_scheme: Optional[Dict[Tuple[int, int, int], str]] = None,
-            colored: bool = False,
-            brush: Optional[str] = None,
-            ) -> str:
+def convert_image(
+        url: str,
+        brush: Optional[str] = None,
+        colored: bool = False,
+        ratio: Tuple[Union[float, int], Union[float, int]] = (1, 1),
+        size: Optional[Tuple[int, int]] = None,
+        crop_box: Optional[Tuple[int, int, int, int]] = None) -> str:
+    im_bytes: HTTPResponse = get_response(url, b=True)
+    image: Image = Image.open(im_bytes)
+    if crop_box is not None:
+        image = image.crop(crop_box)
+
+    if ratio and size:
+        image = image.resize(round(size[0] * ratio[0]), round(size[1] * ratio[1]))
+    elif size:
+        image = image.resize(size)
+    elif ratio:
+        image = image.resize((round(image.size[0] * ratio[0]), round(image.size[1] * ratio[1])))
+
+    return paint_image(image, colored=colored, brush=brush)
+
+
+def paint_image(im: Image,
+                color_scheme: Optional[Dict[Tuple[int, int, int], str]] = None,
+                colored: bool = False,
+                brush: Optional[str] = None,
+                ) -> str:
     if brush is None:
         brush = " "
         if colored:
