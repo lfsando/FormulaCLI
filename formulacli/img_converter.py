@@ -86,7 +86,10 @@ def convert_image(
         image = image.crop(crop_box)
 
     if ratio and size:
-        image = image.resize(round(size[0] * ratio[0]), round(size[1] * ratio[1]))
+        image = image.resize((
+            round(size[0] * ratio[0]),
+            round(size[1] * ratio[1])
+        ))
     elif size:
         image = image.resize(size)
     elif ratio:
